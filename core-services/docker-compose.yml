@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: finledger
+      POSTGRES_USER: finledger
+      POSTGRES_PASSWORD: finledger_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finledger -d finledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  account-service:
+    build: ./services/account-service
+    environment:
+      DB_HOST: postgres
+      DB_NAME: finledger
+      DB_USER: finledger
+      DB_PASSWORD: finledger_dev_password
+    ports:
+      - "8011:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ledger-service:
+    build: ./services/ledger-service
+    environment:
+      DB_HOST: postgres
+      DB_NAME: finledger
+      DB_USER: finledger
+      DB_PASSWORD: finledger_dev_password
+    ports:
+      - "8012:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  transaction-service:
+    build: ./services/transaction-service
+    environment:
+      DB_HOST: postgres
+      DB_NAME: finledger
+      DB_USER: finledger
+      DB_PASSWORD: finledger_dev_password
+      REDIS_HOST: redis
+    ports:
+      - "8013:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
