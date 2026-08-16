@@ -1,0 +1,61 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+*.log
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+terraform.tfvars
+*.tfvars
+!*.tfvars.example
+
+# ---- Terraform ----
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+.terraform.lock.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ---- Docker ----
+*.pid
+
+# ---- Build artifacts (Lambda zips, etc.) ----
+*.zip
+**/build/
+
+# ---- AWS ----
+.aws-sam/
+
+# ---- IDE / editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---- Node (if any tooling ends up needing it) ----
+node_modules/
+
+# ---- Local scratch / build output ----
+*.tmp
+out/
+dist/
+build/
