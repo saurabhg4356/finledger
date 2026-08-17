@@ -1,4 +1,4 @@
-# FinLedger — Phase 4: Infrastructure as Code
+# Infrastructure as Code
 
 Terraform for: VPC (1 NAT gateway, 2 AZs), EKS Fargate cluster, RDS Postgres (Multi-AZ toggleable), ElastiCache Redis, and 3 ECR repositories.
 
