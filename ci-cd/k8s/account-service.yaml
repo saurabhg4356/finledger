@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: finledger
+  labels:
+    app: account-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          # Placeholder tag — replaced by the CI workflow's `kubectl set image`
+          # after the first manual apply. Replace ACCOUNT_ID before applying.
+          image: 372014757729.dkr.ecr.ap-south-1.amazonaws.com/finledger-account-service:initial
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - secretRef:
+                name: finledger-db-credentials
+          # EKS Fargate sizes the pod from these requests, rounding up to the
+          # nearest supported vCPU/memory combination — there's no node to
+          # "fit onto," so these numbers directly become your Fargate bill.
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "250m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+  namespace: finledger
+spec:
+  selector:
+    app: account-service
+  ports:
+    - port: 80
+      targetPort: 8001
+  type: ClusterIP
