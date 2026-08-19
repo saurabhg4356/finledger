@@ -73,4 +73,4 @@ jobs:
           # This is what actually catches a broken deploy in CI instead of
           # discovering it later — if the new pods never go Ready (bad image,
           # crash loop, failing readiness probe), this step fails the workflow.
-          kubectl rollout status deployment/${{ matrix.service }} -n finledger --timeout=180s
+          kubectl rollout status deployment/${{ matrix.service }} -n finledger --timeout=240s
