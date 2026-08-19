@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "phase2-core-services/services/**"
+      - "core-services/services/**"
       - ".github/workflows/deploy.yml"
 
 permissions:
@@ -42,7 +42,7 @@ jobs:
         run: |
           docker build \
             -t "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service }}:${{ github.sha }}" \
-            "phase2-core-services/services/${{ matrix.service }}"
+            "core-services/services/${{ matrix.service }}"
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@0.24.0

@@ -55,9 +55,7 @@ Get the RDS/Redis endpoints from Phase 4's `terraform output`, and the password 
 ### 4. Initial manual deploy (CI only updates images after this exists)
 Replace `ACCOUNT_ID` in each `k8s/*.yaml` file with your real AWS account ID, then:
 ```bash
-kubectl apply -f k8s/account-service.yaml
-kubectl apply -f k8s/ledger-service.yaml
-kubectl apply -f k8s/transaction-service.yaml
+
 ```
 These will initially fail to pull the `:initial` tag (it doesn't exist yet) — that's expected. Pods will sit in `ImagePullBackOff` until step 5 pushes a real image.
 
