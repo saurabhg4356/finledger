@@ -2,7 +2,10 @@ variable "project_name" { type = string }
 
 variable "service_names" {
   type    = list(string)
-  default = ["account-service", "ledger-service", "transaction-service"]
+  default = [
+    "account-service", "ledger-service", "transaction-service",
+    "outbox-poller", "fraud-service", "notification-service"
+  ]
 }
 
 resource "aws_ecr_repository" "services" {
@@ -37,3 +40,4 @@ resource "aws_ecr_lifecycle_policy" "cleanup" {
 output "repository_urls" {
   value = { for k, v in aws_ecr_repository.services : k => v.repository_url }
 }
+
