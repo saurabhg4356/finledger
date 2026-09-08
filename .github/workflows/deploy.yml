@@ -24,7 +24,7 @@ jobs:
       # you want to see all three results, not just the first failure.
       fail-fast: false
       matrix:
-        service: [account-service, ledger-service, transaction-service]
+        service: [account-service, ledger-service, transaction-service, outbox-poller, fraud-service, notification-service]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
