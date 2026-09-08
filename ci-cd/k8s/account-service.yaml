@@ -19,7 +19,7 @@ spec:
         - name: account-service
           # Placeholder tag — replaced by the CI workflow's `kubectl set image`
           # after the first manual apply. Replace ACCOUNT_ID before applying.
-          image: 372014757729.dkr.ecr.ap-south-1.amazonaws.com/finledger-account-service:initial
+          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-account-service:initial
           ports:
             - containerPort: 8001
           envFrom:

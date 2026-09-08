@@ -20,7 +20,7 @@ resource "random_password" "db_master" {
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name = "${var.project_name}/rds/master-credentials"
+  name = "${var.project_name}/rds/master-credential"
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {

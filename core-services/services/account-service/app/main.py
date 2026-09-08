@@ -82,3 +82,4 @@ def list_accounts():
             return cur.fetchall()
     finally:
         conn.close();
+        

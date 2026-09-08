@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ledger-service
-          image: 372014757729.dkr.ecr.ap-south-1.amazonaws.com/finledger-ledger-service:initial
+          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-ledger-service:initial
           ports:
             - containerPort: 8002
           envFrom:
