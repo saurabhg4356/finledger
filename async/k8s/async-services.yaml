@@ -1,0 +1,184 @@
+# ------------------------------------------------------------------------------
+# ServiceAccounts — the annotation is what IRSA uses to map this exact
+# Kubernetes identity to the matching IAM role's trust policy from irsa.tf.
+# Replace <ACCOUNT_ID> before applying.
+# ------------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: outbox-poller
+  namespace: finledger
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::788292453615:role/finledger-outbox-poller-role
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fraud-service
+  namespace: finledger
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::788292453615:role/finledger-fraud-service-role
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service
+  namespace: finledger
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::788292453615:role/finledger-notification-service-role
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outbox-poller
+  namespace: finledger
+  labels:
+    app: outbox-poller
+spec:
+  replicas: 1 # SKIP LOCKED in the poller's query makes this safe to scale up later; 1 is enough for portfolio traffic
+  selector:
+    matchLabels:
+      app: outbox-poller
+  template:
+    metadata:
+      labels:
+        app: outbox-poller
+    spec:
+      serviceAccountName: outbox-poller
+      containers:
+        - name: outbox-poller
+          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-outbox-poller:psycopg-v3
+          env:
+            - name: SNS_TOPIC_ARN
+              value: "arn:aws:sns:ap-south-1:788292453615:finledger-transaction-events"
+          envFrom:
+            - secretRef:
+                name: finledger-db-credentials
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "100m", memory: "256Mi" }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: outbox-poller
+  namespace: finledger
+spec:
+  selector:
+    app: outbox-poller
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-service
+  namespace: finledger
+  labels:
+    app: fraud-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fraud-service
+  template:
+    metadata:
+      labels:
+        app: fraud-service
+    spec:
+      serviceAccountName: fraud-service
+      containers:
+        - name: fraud-service
+          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-fraud-service:initial
+          ports:
+            - containerPort: 8004
+          env:
+            - name: FRAUD_QUEUE_URL
+              value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-fraud-queue"
+          envFrom:
+            - secretRef:
+                name: finledger-db-credentials
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "250m", memory: "512Mi" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8004 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8004 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-service
+  namespace: finledger
+spec:
+  selector:
+    app: fraud-service
+  ports:
+    - port: 80
+      targetPort: 8004
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: finledger
+  labels:
+    app: notification-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      serviceAccountName: notification-service
+      containers:
+        - name: notification-service
+          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-notification-service:psycopg-v3
+          ports:
+            - containerPort: 8005
+          env:
+            - name: NOTIFICATION_QUEUE_URL
+              value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-notification-queue"
+          envFrom:
+            - secretRef:
+                name: finledger-db-credentials
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "250m", memory: "512Mi" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8005 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8005 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: finledger
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 80
+      targetPort: 8005
+  type: ClusterIP

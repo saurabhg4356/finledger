@@ -27,7 +27,7 @@ def healthz():
 
 
 def _serialize(row):
-    """psycopg2 RealDictRow -> plain dict with UUIDs/timestamps as strings for JSON/Redis."""
+    """psycopg RealDictRow -> plain dict with UUIDs/timestamps as strings for JSON/Redis."""
     return {k: (str(v) if not isinstance(v, (int, float, bool, type(None))) else v) for k, v in row.items()}
 
 
