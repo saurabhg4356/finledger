@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "core-services/services/**"
+      - "async/services/**"
       - ".github/workflows/deploy.yml"
 
 permissions:
@@ -21,10 +22,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       # fail-fast: false so one service's failure doesn't cancel the others —
-      # you want to see all three results, not just the first failure.
+      # you want to see all results, not just the first failure.
       fail-fast: false
       matrix:
-        service: [account-service, ledger-service, transaction-service, outbox-poller, fraud-service, notification-service]
+        service:
+          - { name: account-service,       path: core-services/services/account-service }
+          - { name: ledger-service,        path: core-services/services/ledger-service }
+          - { name: transaction-service,   path: core-services/services/transaction-service }
+          - { name: outbox-poller,         path: async/services/outbox-poller }
+          - { name: fraud-service,         path: async/services/fraud-service }
+          - { name: notification-service,  path: async/services/notification-service }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,24 +48,21 @@ jobs:
       - name: Build image
         run: |
           docker build \
-            -t "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service }}:${{ github.sha }}" \
-            "core-services/services/${{ matrix.service }}"
+            -t "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service.name }}:${{ github.sha }}" \
+            "${{ matrix.service.path }}"
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service }}:${{ github.sha }}"
+          image-ref: "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service.name }}:${{ github.sha }}"
           format: table
-          # Fail the build on HIGH/CRITICAL findings — this is the actual
-          # "shift-left security" gate, not just a report nobody reads.
           exit-code: "1"
           severity: "CRITICAL,HIGH"
-          ignore-unfixed: true # don't fail the build on vulnerabilities with no available fix yet — nothing actionable to do about those today
+          ignore-unfixed: true
 
-      # Only reached if the Trivy step above passed (exit-code 0).
       - name: Push image to ECR
         run: |
-          docker push "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service }}:${{ github.sha }}"
+          docker push "${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service.name }}:${{ github.sha }}"
 
       - name: Update kubeconfig
         run: |
@@ -66,11 +70,8 @@ jobs:
 
       - name: Deploy — set image and wait for rollout
         run: |
-          kubectl set image deployment/${{ matrix.service }} \
-            ${{ matrix.service }}="${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service }}:${{ github.sha }}" \
+          kubectl set image deployment/${{ matrix.service.name }} \
+            ${{ matrix.service.name }}="${{ env.ECR_REGISTRY }}/finledger-${{ matrix.service.name }}:${{ github.sha }}" \
             -n finledger
 
-          # This is what actually catches a broken deploy in CI instead of
-          # discovering it later — if the new pods never go Ready (bad image,
-          # crash loop, failing readiness probe), this step fails the workflow.
-          kubectl rollout status deployment/${{ matrix.service }} -n finledger --timeout=240s
+          kubectl rollout status deployment/${{ matrix.service.name }} -n finledger --timeout=240s
