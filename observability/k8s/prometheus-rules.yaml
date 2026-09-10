@@ -1,0 +1,69 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: finledger-business-alerts
+  namespace: finledger
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: finledger.ledger-integrity
+      rules:
+        # This is the single most important alert in the entire project.
+        # A non-zero value here means the double-entry invariant from the
+        # Phase 1 design doc has been violated — actual money math is wrong,
+        # not just "a pod is slow." Fires immediately (group_wait: 0s in
+        # AlertManager's route config), not batched like everything else.
+        - alert: LedgerZeroSumViolation
+          expr: finledger_ledger_zero_sum_violations > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Ledger zero-sum invariant violated"
+            description: "{{ $value }} transaction(s) have ledger entries that don't sum to zero. This means the core correctness guarantee from the Phase 1 design doc has been broken — investigate immediately, do not wait for business hours."
+
+        - alert: LedgerBalanceReconciliationDrift
+          expr: finledger_ledger_balance_drift_violations > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Account cached_balance disagrees with ledger_entries"
+            description: "{{ $value }} account(s) have a cached_balance that doesn't match the sum of their ledger_entries. Either a bug bypassed the atomic write path, or a manual DB edit happened outside the application."
+
+    - name: finledger.transaction-health
+      rules:
+        - alert: TransactionFailureRateHigh
+          expr: |
+            (
+              sum(rate(finledger_transactions_total{status="failed"}[5m]))
+              /
+              sum(rate(finledger_transactions_total[5m]))
+            ) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Transaction failure rate above 10% over 5 minutes"
+            description: "{{ $value | humanizePercentage }} of transfers are failing. Check transaction-service logs and recent deploys."
+
+    - name: finledger.async-pipeline
+      rules:
+        - alert: DeadLetterQueueHasMessages
+          expr: aws_sqs_approximate_number_of_messages_visible_average{queue_name=~".*-dlq"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Messages sitting in a dead-letter queue"
+            description: "{{ $labels.queue_name }} has {{ $value }} message(s) that failed processing 3 times — exactly the poison-message scenario proven in Phase 6's test. Investigate the message content; it won't resolve itself."
+
+        - alert: QueueBacklogGrowing
+          expr: aws_sqs_approximate_number_of_messages_visible_average{queue_name!~".*-dlq"} > 100
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Queue backlog building up"
+            description: "{{ $labels.queue_name }} has {{ $value }} messages waiting for over 10 minutes — the consumer may be down or falling behind."

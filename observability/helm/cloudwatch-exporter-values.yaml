@@ -1,0 +1,44 @@
+# yet-another-cloudwatch-exporter (YACE) — this is what makes SQS queue depth
+# (a CloudWatch-native metric, not something any FinLedger service produces)
+# visible to Prometheus/Grafana/AlertManager at all.
+#
+# Install with:
+#   helm repo add yet-another-cloudwatch-exporter https://nerdswords.github.io/helm-charts
+#   helm install cloudwatch-exporter yet-another-cloudwatch-exporter/yet-another-cloudwatch-exporter \
+#     --namespace monitoring \
+#     -f cloudwatch-exporter-values.yaml \
+#     --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<cloudwatch_exporter_role_arn from terraform output>
+
+region: ap-south-1
+
+serviceAccount:
+  create: true
+  name: cloudwatch-exporter
+  # annotations set via --set above (see install command) rather than
+  # hardcoded here, since the role ARN contains the AWS account ID.
+
+metrics:
+  - namespace: AWS/SQS
+    resource_type: sqs
+    dimensions:
+      - QueueName
+    metrics:
+      - name: ApproximateNumberOfMessagesVisible
+        statistics: [Average]
+        period: 60
+        length: 300
+      - name: ApproximateNumberOfMessagesNotVisible
+        statistics: [Average]
+        period: 60
+        length: 300
+
+# YACE exposes a /metrics endpoint Prometheus scrapes via the ServiceMonitor
+# in k8s/service-monitors.yaml — resulting metric names look like:
+#   aws_sqs_approximate_number_of_messages_visible_average{queue_name="finledger-fraud-dlq"}
+# A non-zero value on a *-dlq queue for any sustained period is exactly the
+# "a poison message got stuck" signal from Phase 6, now visible as a metric
+# instead of something you only notice by manually checking the queue.
+
+resources:
+  requests: { cpu: "100m", memory: "128Mi" }
+  limits: { cpu: "200m", memory: "256Mi" }

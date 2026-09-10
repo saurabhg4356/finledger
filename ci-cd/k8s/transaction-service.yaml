@@ -52,6 +52,7 @@ spec:
   selector:
     app: transaction-service
   ports:
+    - name: http
     - port: 80
       targetPort: 8003
   type: ClusterIP

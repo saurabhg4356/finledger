@@ -1,0 +1,111 @@
+# kube-prometheus-stack values — EKS Fargate specific.
+#
+# Install with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     -f kube-prometheus-stack-values.yaml
+
+# ------------------------------------------------------------------------------
+# node-exporter is a DaemonSet, and Fargate does not support DaemonSets AT
+# ALL — not "needs tolerations," categorically unsupported, since there is no
+# accessible host for a per-node agent to run on. This isn't a workaround
+# situation like CoreDNS was in Phase 4 (that just needed a Fargate profile
+# annotation fix because CoreDNS is a Deployment); node-exporter fundamentally
+# cannot run here. Leaving it enabled means its pods sit Pending forever.
+#
+# Disabling it is also the CORRECT choice, not just a workaround: Fargate
+# pods have no visible "node" to introspect in the first place — AWS manages
+# the underlying compute and deliberately doesn't expose host-level metrics.
+# kube-state-metrics (a regular Deployment, watches the K8s API, works fine
+# on Fargate) still gives you pod/deployment/replica-level metrics.
+# ------------------------------------------------------------------------------
+prometheus-node-exporter:
+  enabled: false
+
+kube-state-metrics:
+  enabled: true
+
+# ------------------------------------------------------------------------------
+# No persistent storage — deliberate, not an oversight. This project is
+# destroyed between study sessions per the Phase 0 cost guardrails, so
+# Prometheus data surviving a pod restart isn't worth the added complexity of
+# wiring up the EBS CSI driver + IRSA just for this. If you want real
+# persistence, the trade-off to make explicitly is: install the aws-ebs-csi-driver
+# EKS add-on first, then set a storageClassName + storage size under
+# prometheus.prometheusSpec.storageSpec below.
+# ------------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    retention: 6h # short retention matches the ephemeral-storage, short-lived-session reality of this project
+    resources:
+      requests: { cpu: "250m", memory: "512Mi" }
+      limits: { cpu: "500m", memory: "1Gi" }
+    # Explicitly empty — no storageSpec means Prometheus uses ephemeral pod
+    # storage. Data is lost on pod restart. Accepted trade-off, see above.
+
+    # ------------------------------------------------------------------------
+    # THE classic "why is Prometheus not scraping my service" trap: by
+    # default, kube-prometheus-stack's Prometheus CR only watches
+    # ServiceMonitors that are (a) in its own release namespace, and (b)
+    # carry its own Helm release label. The FinLedger services' ServiceMonitors
+    # live in the `finledger` namespace with no such label — without the two
+    # settings below, they'd be silently ignored with no error anywhere.
+    # ------------------------------------------------------------------------
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+    ruleSelector: {}
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits: { cpu: "100m", memory: "256Mi" }
+  config:
+    route:
+      receiver: "default"
+      group_by: ["alertname", "severity"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        # Ledger integrity violations are the one alert in this whole project
+        # that should page immediately, not wait in a batch — money math being
+        # wrong is categorically different from a pod restarting.
+        - receiver: "critical"
+          matchers:
+            - severity = "critical"
+          group_wait: 0s
+          repeat_interval: 15m
+    receivers:
+      - name: "default"
+        # Fill in a real webhook (Slack incoming webhook URL, etc.) — left as
+        # a placeholder rather than a fabricated one that looks real but
+        # silently does nothing.
+        webhook_configs: []
+      - name: "critical"
+        webhook_configs: []
+
+grafana:
+  enabled: true
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits: { cpu: "200m", memory: "512Mi" }
+  # No ALB/Ingress wired up yet (that's still pending from Phase 4/5 — see
+  # those READMEs). Access Grafana via port-forward for now:
+  #   kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+  adminPassword: "" # set via --set grafana.adminPassword=... at install time, never commit a real one here
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard # any ConfigMap with this label is auto-loaded as a dashboard
+
+# Prometheus Operator itself — no special Fargate handling needed, it's a
+# normal Deployment.
+prometheusOperator:
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits: { cpu: "200m", memory: "256Mi" }

@@ -52,6 +52,7 @@ spec:
   selector:
     app: ledger-service
   ports:
+    - name: http
     - port: 80
       targetPort: 8002
   type: ClusterIP
