@@ -4,15 +4,16 @@ metadata:
   name: transaction-service
   namespace: finledger
   labels:
-    release: kube-prometheus-stack # harmless if unused given the open selectors in values.yaml, but kept for clarity/consistency with chart conventions
+    release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
       app: transaction-service
   namespaceSelector:
-    matchNames: ["finledger"]
+    matchNames:
+      - finledger
   endpoints:
-    - port: http # must match the named port below in the Service — see services-updates/ notes
+    - port: http
       path: /metrics
       interval: 15s
 ---
@@ -28,17 +29,13 @@ spec:
     matchLabels:
       app: ledger-service
   namespaceSelector:
-    matchNames: ["finledger"]
+    matchNames:
+      - finledger
   endpoints:
     - port: http
       path: /metrics
       interval: 15s
 ---
-# CAVEAT: the exact Service name/port YACE's Helm chart creates can vary by
-# chart version. Verify with `kubectl get svc -n monitoring` after installing
-# YACE and adjust `matchLabels`/`port` below to match what's actually there
-# before assuming this ServiceMonitor is correctly wired — written honestly
-# as "verify this" rather than a guessed value presented as certain.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -51,8 +48,9 @@ spec:
     matchLabels:
       app.kubernetes.io/name: yet-another-cloudwatch-exporter
   namespaceSelector:
-    matchNames: ["monitoring"]
+    matchNames:
+      - monitoring
   endpoints:
-    - port: http-metrics # VERIFY this against the actual Service's port name
+    - port: http
       path: /metrics
-      interval: 60s # CloudWatch metrics don't update faster than ~60s anyway, no benefit scraping more frequently
+      interval: 60s

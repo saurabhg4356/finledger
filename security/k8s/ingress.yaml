@@ -1,0 +1,56 @@
+# ------------------------------------------------------------------------------
+# This is the moment the ALB deferred since Phase 4 actually gets created —
+# the AWS Load Balancer Controller watches this Ingress and provisions a real
+# ALB from it, using the public subnets tagged back in Phase 4's networking
+# module. Replace <WAF_WEB_ACL_ARN> with the output from terraform apply.
+# ------------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: finledger-ingress
+  namespace: finledger
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip # required for Fargate — pods have no visible "instance" to target
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:ap-south-1:788292453615:regional/webacl/finledger-alb-waf/8f490514-f264-488d-9dae-43638deff729"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /accounts
+            pathType: Prefix
+            backend:
+              service:
+                name: account-service
+                port:
+                  number: 80
+          - path: /ledger
+            pathType: Prefix
+            backend:
+              service:
+                name: ledger-service
+                port:
+                  number: 80
+          - path: /transactions
+            pathType: Prefix
+            backend:
+              service:
+                name: transaction-service
+                port:
+                  number: 80
+          - path: /fraud-checks
+            pathType: Prefix
+            backend:
+              service:
+                name: fraud-service
+                port:
+                  number: 80
+          - path: /notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 80

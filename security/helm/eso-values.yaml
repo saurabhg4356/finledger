@@ -1,0 +1,27 @@
+# Install with:
+#   helm repo add external-secrets https://charts.external-secrets.io
+#   helm install external-secrets external-secrets/external-secrets \
+#     --namespace finledger \
+#     -f eso-values.yaml \
+#     --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<eso_role_arn from terraform output>
+
+installCRDs: true
+
+serviceAccount:
+  create: true
+  name: external-secrets
+  # annotation set via --set at install time (contains the account ID)
+
+resources:
+  requests: { cpu: "100m", memory: "128Mi" }
+  limits: { cpu: "200m", memory: "256Mi" }
+
+webhook:
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "100m", memory: "128Mi" }
+
+certController:
+  resources:
+    requests: { cpu: "50m", memory: "64Mi" }
+    limits: { cpu: "100m", memory: "128Mi" }

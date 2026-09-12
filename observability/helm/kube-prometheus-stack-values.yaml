@@ -67,33 +67,36 @@ alertmanager:
   config:
     route:
       receiver: "default"
-      group_by: ["alertname", "severity"]
+      group_by: [ "alertname", "severity" ]
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
       routes:
-        # Ledger integrity violations are the one alert in this whole project
-        # that should page immediately, not wait in a batch — money math being
-        # wrong is categorically different from a pod restarting.
-        - receiver: "critical"
-          matchers:
-            - severity = "critical"
-          group_wait: 0s
-          repeat_interval: 15m
+      # Ledger integrity violations are the one alert in this whole project
+      # that should page immediately, not wait in a batch — money math being
+      # wrong is categorically different from a pod restarting.
+      - receiver: "critical"
+        matchers:
+        - severity = "critical"
+        group_wait: 0s
+        repeat_interval: 15m
     receivers:
-      - name: "default"
-        # Fill in a real webhook (Slack incoming webhook URL, etc.) — left as
-        # a placeholder rather than a fabricated one that looks real but
-        # silently does nothing.
-        webhook_configs: []
-      - name: "critical"
-        webhook_configs: []
+    - name: "default"
+      # Fill in a real webhook (Slack incoming webhook URL, etc.) — left as
+      # a placeholder rather than a fabricated one that looks real but
+      # silently does nothing.
+      webhook_configs: []
+    - name: "critical"
+      webhook_configs: []
 
 grafana:
   enabled: true
   resources:
-    requests: { cpu: "100m", memory: "256Mi" }
-    limits: { cpu: "200m", memory: "512Mi" }
+    requests: { cpu: "500m", memory: "512Mi" }
+    limits: { cpu: "1", memory: "1Gi" }
+  livenessProbe:
+    initialDelaySeconds: 300
+    failureThreshold: 12
   # No ALB/Ingress wired up yet (that's still pending from Phase 4/5 — see
   # those READMEs). Access Grafana via port-forward for now:
   #   kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80

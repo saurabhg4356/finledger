@@ -1,0 +1,24 @@
+# Install with:
+#   helm repo add eks https://aws.github.io/eks-charts
+#   helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+#     --namespace kube-system \
+#     -f alb-controller-values.yaml \
+#     --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<alb_controller_role_arn from terraform output>
+#
+# Runs in kube-system, which ALREADY has a Fargate profile from Phase 4
+# (originally created for CoreDNS) — no new Fargate profile needed for this
+# controller specifically, it schedules onto the existing one.
+
+clusterName: finledger-cluster
+region: ap-south-1
+vpcId: "vpc-046afdf04fac32c3a"
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+
+resources:
+  requests: { cpu: "100m", memory: "128Mi" }
+  limits: { cpu: "200m", memory: "256Mi" }
+
+replicaCount: 2

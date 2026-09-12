@@ -1,5 +1,20 @@
 name: Build, Scan, Push, Deploy
 
+# UPDATED from Phase 5 — changes from the original:
+#   1. matrix.service now includes all 6 services (Phase 5 only had 3)
+#   2. Trivy now also outputs SARIF, uploaded to GitHub's Security tab —
+#      findings are visible in the repo UI, not just a pass/fail workflow log
+#   3. A new, separate job scans the Terraform itself for misconfigurations
+#      (unencrypted resources, overly permissive security groups, etc.) —
+#      this is "shift-left" applied to infrastructure, not just app images
+#
+# FIX (this version): matrix.service is now a flat list of plain service
+# names (strings), not objects with .name/.path. Every step below already
+# referenced it as ${{ matrix.service }} (a plain string) EXCEPT the matrix
+# definition itself, which still had { name, path } objects — that mismatch
+# is what was breaking every job. The "Determine build context" step below
+# figures out the path automatically, so we don't need `path` in the matrix
+# at all anymore.
 
 on:
   push:

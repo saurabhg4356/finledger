@@ -54,7 +54,8 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo update
 helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
-  -f helm/kube-prometheus-stack-values.yaml \
+  --create-namespace \
+  -f observability/helm/kube-prometheus-stack-values.yaml \
   --set grafana.adminPassword=<choose-a-real-password-here>
 ```
 
@@ -64,7 +65,7 @@ helm repo add yet-another-cloudwatch-exporter https://nerdswords.github.io/helm-
 helm repo update
 helm install cloudwatch-exporter yet-another-cloudwatch-exporter/yet-another-cloudwatch-exporter \
   --namespace monitoring \
-  -f helm/cloudwatch-exporter-values.yaml \
+  -f observability/helm/cloudwatch-exporter-values.yaml \
   --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=<cloudwatch_exporter_role_arn from step 1>
 ```
 Then verify the actual Service name/port it created and fix `k8s/service-monitors.yaml`'s `cloudwatch-exporter` ServiceMonitor to match — flagged honestly as unverified in that file's comments rather than guessed and presented as certain.

@@ -13,6 +13,16 @@ variable "aws_region" {
   default = "ap-south-1"
 }
 
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_eks_cluster.main.vpc_config[0].vpc_id]
+  }
+  tags = {
+    "kubernetes.io/role/internal-elb" = "1"
+  }
+}
+
 variable "project_name" {
   type    = string
   default = "finledger"
@@ -55,7 +65,7 @@ resource "aws_eks_fargate_profile" "monitoring" {
   cluster_name           = var.eks_cluster_name
   fargate_profile_name   = "monitoring"
   pod_execution_role_arn = data.aws_iam_role.fargate_pod_execution.arn
-  subnet_ids              = data.aws_eks_cluster.main.vpc_config[0].subnet_ids
+  subnet_ids              = data.aws_subnets.private.ids
 
   selector {
     namespace = "monitoring"
@@ -121,5 +131,7 @@ resource "aws_iam_role_policy" "cloudwatch_exporter_readonly" {
     }]
   })
 }
+
+
 
 output "cloudwatch_exporter_role_arn" { value = aws_iam_role.cloudwatch_exporter.arn }
