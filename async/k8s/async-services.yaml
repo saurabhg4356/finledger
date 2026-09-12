@@ -46,21 +46,21 @@ spec:
     spec:
       serviceAccountName: outbox-poller
       containers:
-        - name: outbox-poller
-          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-outbox-poller:psycopg-v3
-          env:
-            - name: SNS_TOPIC_ARN
-              value: "arn:aws:sns:ap-south-1:788292453615:finledger-transaction-events"
-          envFrom:
-            - secretRef:
-                name: finledger-db-credentials
-          resources:
-            requests: { cpu: "100m", memory: "256Mi" }
-            limits: { cpu: "100m", memory: "256Mi" }
-          livenessProbe:
-            httpGet: { path: /healthz, port: 8080 }
-            initialDelaySeconds: 10
-            periodSeconds: 20
+      - name: outbox-poller
+        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-outbox-poller:psycopg-v4
+        env:
+        - name: SNS_TOPIC_ARN
+          value: "arn:aws:sns:ap-south-1:788292453615:finledger-transaction-events"
+        envFrom:
+        - secretRef:
+            name: finledger-db-credentials
+        resources:
+          requests: { cpu: "100m", memory: "256Mi" }
+          limits: { cpu: "100m", memory: "256Mi" }
+        livenessProbe:
+          httpGet: { path: /healthz, port: 8080 }
+          initialDelaySeconds: 10
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -71,8 +71,8 @@ spec:
   selector:
     app: outbox-poller
   ports:
-    - port: 80
-      targetPort: 8080
+  - port: 80
+    targetPort: 8080
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -94,27 +94,27 @@ spec:
     spec:
       serviceAccountName: fraud-service
       containers:
-        - name: fraud-service
-          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-fraud-service:initial
-          ports:
-            - containerPort: 8004
-          env:
-            - name: FRAUD_QUEUE_URL
-              value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-fraud-queue"
-          envFrom:
-            - secretRef:
-                name: finledger-db-credentials
-          resources:
-            requests: { cpu: "250m", memory: "512Mi" }
-            limits: { cpu: "250m", memory: "512Mi" }
-          readinessProbe:
-            httpGet: { path: /healthz, port: 8004 }
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet: { path: /healthz, port: 8004 }
-            initialDelaySeconds: 15
-            periodSeconds: 20
+      - name: fraud-service
+        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-fraud-service:initial
+        ports:
+        - containerPort: 8004
+        env:
+        - name: FRAUD_QUEUE_URL
+          value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-fraud-queue"
+        envFrom:
+        - secretRef:
+            name: finledger-db-credentials
+        resources:
+          requests: { cpu: "250m", memory: "512Mi" }
+          limits: { cpu: "250m", memory: "512Mi" }
+        readinessProbe:
+          httpGet: { path: /healthz, port: 8004 }
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: { path: /healthz, port: 8004 }
+          initialDelaySeconds: 15
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -125,8 +125,8 @@ spec:
   selector:
     app: fraud-service
   ports:
-    - port: 80
-      targetPort: 8004
+  - port: 80
+    targetPort: 8004
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -148,27 +148,27 @@ spec:
     spec:
       serviceAccountName: notification-service
       containers:
-        - name: notification-service
-          image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-notification-service:psycopg-v3
-          ports:
-            - containerPort: 8005
-          env:
-            - name: NOTIFICATION_QUEUE_URL
-              value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-notification-queue"
-          envFrom:
-            - secretRef:
-                name: finledger-db-credentials
-          resources:
-            requests: { cpu: "250m", memory: "512Mi" }
-            limits: { cpu: "250m", memory: "512Mi" }
-          readinessProbe:
-            httpGet: { path: /healthz, port: 8005 }
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet: { path: /healthz, port: 8005 }
-            initialDelaySeconds: 15
-            periodSeconds: 20
+      - name: notification-service
+        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-notification-service:psycopg-v4
+        ports:
+        - containerPort: 8005
+        env:
+        - name: NOTIFICATION_QUEUE_URL
+          value: "https://sqs.ap-south-1.amazonaws.com/788292453615/finledger-notification-queue"
+        envFrom:
+        - secretRef:
+            name: finledger-db-credentials
+        resources:
+          requests: { cpu: "250m", memory: "512Mi" }
+          limits: { cpu: "250m", memory: "512Mi" }
+        readinessProbe:
+          httpGet: { path: /healthz, port: 8005 }
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: { path: /healthz, port: 8005 }
+          initialDelaySeconds: 15
+          periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
@@ -179,6 +179,6 @@ spec:
   selector:
     app: notification-service
   ports:
-    - port: 80
-      targetPort: 8005
+  - port: 80
+    targetPort: 8005
   type: ClusterIP

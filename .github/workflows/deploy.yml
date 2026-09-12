@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results-${{ matrix.service }}.sarif
           category: "trivy-${{ matrix.service }}"
@@ -125,7 +125,7 @@ jobs:
           exit-code: "0" # report-only for now — flip to "1" once the backlog of findings is triaged, so this doesn't block every push on day one
 
       - name: Upload Terraform scan SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-config-results.sarif
           category: "trivy-terraform-config"
