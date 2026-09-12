@@ -35,7 +35,12 @@ metadata:
   labels:
     app: outbox-poller
 spec:
-  replicas: 1 # SKIP LOCKED in the poller's query makes this safe to scale up later; 1 is enough for portfolio traffic
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: outbox-poller
@@ -47,7 +52,7 @@ spec:
       serviceAccountName: outbox-poller
       containers:
       - name: outbox-poller
-        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-outbox-poller:psycopg-v4
+        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-outbox-poller:9758d40052a38d73100ea2fa5d307915f6b60a3e
         env:
         - name: SNS_TOPIC_ARN
           value: "arn:aws:sns:ap-south-1:788292453615:finledger-transaction-events"
@@ -84,6 +89,11 @@ metadata:
     app: fraud-service
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: fraud-service
@@ -138,6 +148,11 @@ metadata:
     app: notification-service
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: notification-service
@@ -149,7 +164,7 @@ spec:
       serviceAccountName: notification-service
       containers:
       - name: notification-service
-        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-notification-service:psycopg-v4
+        image: 788292453615.dkr.ecr.ap-south-1.amazonaws.com/finledger-notification-service:9758d40052a38d73100ea2fa5d307915f6b60a3e
         ports:
         - containerPort: 8005
         env:
