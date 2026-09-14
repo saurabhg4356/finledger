@@ -1,0 +1,42 @@
+# Install with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install prometheus-adapter prometheus-community/prometheus-adapter \
+#     --namespace monitoring \
+#     -f prometheus-adapter-values.yaml
+#
+# WHY THIS COMPONENT EXISTS: Kubernetes' HorizontalPodAutoscaler cannot query
+# Prometheus directly — it only understands the Metrics API family (resource
+# metrics like CPU/memory, custom metrics tied to a k8s object, or external
+# metrics for anything else). prometheus-adapter is the bridge: it queries
+# Prometheus on HPA's behalf and re-exposes the result through the External
+# Metrics API, which is the correct API type here specifically because SQS
+# queue depth isn't a metric ABOUT any Kubernetes object (a pod, a Service) —
+# it's an external fact from AWS. That's the distinction between "custom
+# metrics" (tied to a k8s resource) and "external metrics" (everything else),
+# and getting it right on the FIRST try matters, since the two APIs are not
+# interchangeable in an HPA's `metrics:` block.
+
+prometheus:
+  url: http://kube-prometheus-stack-prometheus.monitoring.svc
+  port: 9090
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 250m
+    memory: 512Mi
+
+rules:
+  default: false
+  external:
+  - seriesQuery: '{__name__="aws_sqs_approximate_number_of_messages_visible_average"}'
+    resources:
+      # The external metrics API request is namespaced, so the adapter needs
+      # a generic resource mapping even though the query uses fixed labels.
+      template: <<.Resource>>
+    name:
+      as: "fraud_queue_depth"
+    metricsQuery: |
+      avg(aws_sqs_approximate_number_of_messages_visible_average{namespace="monitoring",dimension_QueueName="finledger-fraud-queue"})

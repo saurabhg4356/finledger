@@ -1,0 +1,45 @@
+# ------------------------------------------------------------------------------
+# This automates exactly what Phase 9's Chaos Experiment 3 did manually
+# (kubectl scale deployment/fraud-service --replicas=2 after observing the
+# backlog). Now the backlog itself triggers the scale-up — no human watching
+# a Grafana dashboard required.
+#
+# type: AverageValue with averageValue: "50" means: aim for roughly 50
+# backlogged messages per replica. 200 messages in the queue -> HPA targets
+# 4 replicas. This is standard "how many items should each worker handle"
+# capacity-planning logic, same shape KEDA's SQS scaler uses, just expressed
+# through prometheus-adapter's external metric instead.
+# ------------------------------------------------------------------------------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fraud-service-hpa
+  namespace: finledger
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fraud-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: fraud_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "50"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120

@@ -87,6 +87,7 @@ resource "aws_db_instance" "main" {
     auto_shutdown = "true"
     project       = var.project_name
   }
+  apply_immediately = true
 }
 
 output "endpoint" { value = aws_db_instance.main.address }
